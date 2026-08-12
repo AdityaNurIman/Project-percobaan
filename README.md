@@ -1,119 +1,87 @@
 # Project Percobaan — Laravel Blog
 
-Sebuah aplikasi **blog management system** sederhana yang dibangun dengan **Laravel 12**, mengikuti kursus [Laravel from Scratch (Laravel Daily)](https://laraveldaily.com/course/laravel-from-scratch).
+Aplikasi **blog management system** yang dibangun dengan **Laravel 12** (PHP 8.2), mengikuti kursus [Laravel from Scratch](https://laraveldaily.com/course/laravel-from-scratch) oleh Laravel Daily. Project ini belajar dari nol: routing, Blade layouts, migrasi database, Eloquent ORM, autentikasi, hingga CRUD admin lengkap.
 
-## Fitur
+---
 
-**Halaman Publik**
-- Halaman beranda dengan daftar post terbaru (`/`)
-- Sidebar kategori; filter post per kategori via `?category_id=`
-- Halaman detail post dengan route model binding (`/posts/{post}`)
-- Halaman statis Contact (`/contact`) dan About (`/about`)
+## Daftar Isi
 
-**Autentikasi (Laravel Breeze)**
-- Login, register, logout
-- Verifikasi email, reset & konfirmasi password
-- Profil user (update info, ganti password, hapus akun)
+- [Fitur Utama](#fitur-utama)
+- [Tech Stack](#tech-stack)
+- [Memulai Cepat](#memulai-cepat)
+- [Dokumentasi Lengkap](#dokumentasi-lengkap)
+- [Akun Admin Default](#akun-admin-default)
+- [Lisensi](#lisensi)
 
-**Admin Panel** (dilindungi middleware `auth` + `verified`)
-- CRUD Kategori (`/admin/categories`)
-- CRUD Post (`/admin/posts`) dengan eager loading relasi kategori
-- Validasi form + pesan error di semua form
+---
+
+## Fitur Utama
+
+| Area | Fitur |
+|------|-------|
+| **Publik** | Beranda daftar post terbaru, sidebar kategori, filter post per kategori, halaman detail post, halaman Contact & About |
+| **Autentikasi** | Login, register, logout, verifikasi email, reset & konfirmasi password, kelola profil |
+| **Admin** | CRUD kategori (index/create/edit/delete), CRUD post dengan eager loading, validasi form + pesan error |
+| **Keamanan** | Route admin dilindungi middleware `auth` & `verified`, CSRF protection, mass-assignment protection (`$fillable`) |
+
+---
 
 ## Tech Stack
 
 | Komponen | Teknologi |
 |----------|-----------|
-| Framework | Laravel 12 (PHP 8.2) |
-| Database | MySQL (default), SQLite untuk testing |
-| Auth | Laravel Breeze (Blade) |
-| Styling | Tailwind CSS (CDN untuk halaman blog, Vite untuk Breeze) |
-| Build | Vite |
+| Framework | Laravel 12.65 (PHP 8.2.12) |
+| Database | MySQL (development), SQLite (testing) |
+| Autentikasi | Laravel Breeze 2.x (Blade) |
+| Styling | Tailwind CSS (CDN di layout blog, Vite di layout Breeze) |
+| Build tool | Vite 6 + laravel-vite-plugin |
 
-## Instalasi
+---
+
+## Memulai Cepat
 
 ```bash
-# 1. Install dependency PHP
 composer install
-
-# 2. Install dependency JS & build aset
 npm install
 npm run build
-
-# 3. Siapkan environment
 cp .env.example .env
 php artisan key:generate
-
-# 4. Konfigurasi .env (database MySQL)
-#    DB_CONNECTION=mysql
-#    DB_HOST=127.0.0.1
-#    DB_PORT=3306
-#    DB_DATABASE=laravel
-#    DB_USERNAME=root
-#    DB_PASSWORD=
-
-# 5. Migrasi + seed data awal (kategori & post contoh + user admin)
+# sesuaikan kredensial DB di .env
 php artisan migrate
 php artisan db:seed
-
-# 6. Jalankan server
 php artisan serve
 ```
 
-Buka `http://127.0.0.1:8000`.
+Buka `http://127.0.0.1:8000`. Penjelasan langkah demi langkah ada di [docs/installation.md](docs/installation.md).
 
-## Akun Admin (hasil seeder)
+---
+
+## Dokumentasi Lengkap
+
+Dokumentasi project ini dipecah menjadi beberapa file agar mudah dinavigasi:
+
+| File | Isi |
+|------|-----|
+| [docs/installation.md](docs/installation.md) | Instalasi detail, konfigurasi environment, migrasi & seeding, menjalankan server, troubleshooting umum |
+| [docs/architecture.md](docs/architecture.md) | Arsitektur MVC, skema database lengkap, seluruh rute, penjelasan tiap controller, model & relasi, struktur views |
+| [docs/features.md](docs/features.md) | Penjelasan detail setiap fitur: halaman publik, autentikasi, admin CRUD, validasi, keamanan |
+| [docs/testing.md](docs/testing.md) | Cara menjalankan test, struktur test, dan mengapa data development aman saat test |
+
+---
+
+## Akun Admin Default
+
+Setelah menjalankan `php artisan db:seed`, tersedia akun:
 
 | Field | Nilai |
 |-------|-------|
 | Email | `admin@example.com` |
 | Password | `password` |
 
-## Rute Utama
+Gunakan untuk login di `/login` lalu akses panel admin di `/admin/categories` dan `/admin/posts`.
 
-| Method | URI | Nama | Keterangan |
-|--------|-----|------|------------|
-| GET | `/` | `home` | Beranda blog |
-| GET | `/posts/{post}` | `posts.show` | Detail post |
-| GET | `/login` | `login` | Login |
-| GET | `/register` | `register` | Register |
-| GET | `/admin/categories` | `admin.categories.index` | CRUD kategori (auth) |
-| GET | `/admin/posts` | `admin.posts.index` | CRUD post (auth) |
-| GET | `/dashboard` | `dashboard` | Dashboard user (auth) |
-
-## Menjalankan Test
-
-```bash
-php artisan test
-```
-
-Test memakai database SQLite terpisah (`database/testing.sqlite`) sehingga data database development (MySQL) tidak terganggu.
-
-## Struktur Folder
-
-```
-app/
-  Http/Controllers/
-    HomeController.php          # Halaman publik (index + show post)
-    Admin/
-      CategoryController.php    # CRUD kategori
-      PostController.php        # CRUD post
-  Models/
-    Category.php                # relasi hasMany(Post)
-    Post.php                    # relasi belongsTo(Category)
-database/
-  migrations/                   # users, cache, jobs, categories, posts
-  seeders/DatabaseSeeder.php    # user admin + 8 kategori + 2 post contoh
-resources/views/
-  layouts/blog.blade.php        # layout halaman publik
-  home.blade.php                # beranda
-  posts/show.blade.php          # detail post
-  admin/categories/             # views CRUD kategori
-  admin/posts/                  # views CRUD post
-routes/web.php                  # semua rute
-tests/Feature/AdminCrudTest.php # test CRUD + validasi + auth
-```
+---
 
 ## Lisensi
 
-Project ini dibuat untuk pembelajaran mengikuti kursus Laravel Daily — [Laravel from Scratch](https://laraveldaily.com/course/laravel-from-scratch).
+Project pembelajaran mengikuti kursus Laravel Daily — [Laravel from Scratch](https://laraveldaily.com/course/laravel-from-scratch). Tidak untuk tujuan komersial.
