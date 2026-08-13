@@ -23,6 +23,7 @@ Aplikasi **blog management system** yang dibangun dengan **Laravel 12** (PHP 8.2
 15. [Testing](#15-testing)
 16. [Troubleshooting](#16-troubleshooting)
 17. [Akun Admin Default](#17-akun-admin-default)
+18. [Tugas Praktik: Aplikasi Data Barang](#18-tugas-praktik-aplikasi-data-barang-eloquent--blade-crud)
 
 ---
 
@@ -531,6 +532,453 @@ Setelah `php artisan db:seed`:
 | Password | `password` |
 
 Login di `/login`, lalu akses panel admin di `/admin/categories` dan `/admin/posts`.
+
+---
+
+## 18. Tugas Praktik: Aplikasi Data Barang (Eloquent + Blade CRUD)
+
+Dokumentasi berikut menjelaskan **cara membangun fitur CRUD "Data Barang"** dari nol di Laravel 12: dari pembuatan model, migrasi, controller, route, hingga views Blade. Materi ini mencakup 10 langkah/tugas yang saling berkesinambungan.
+
+---
+
+### 18.1 Soal 1 — Membuat Model & Migration Tabel `barangs`
+
+Perintah untuk membuat **model sekaligus migration**:
+
+```bash
+php artisan make:model Barang -m
+```
+
+| Bagian | Fungsi |
+|--------|--------|
+| `php artisan make:model` | Perintah artisan untuk membuat class model Eloquent |
+| `Barang` | Nama model yang dibuat → `app/Models/Barang.php` |
+| `-m` (atau `--migration`) | Flag opsional yang **sekaligus membuat file migration** untuk tabel `barangs` |
+
+Tanpa `-m`, migration harus dibuat terpisah dengan `php artisan make:migration create_barangs_table`.
+
+Isi migration `database/migrations/..._create_barangs_table.php`:
+
+```php
+Schema::create('barangs', function (Blueprint $table) {
+    $table->id();
+    $table->string('nama_barang');
+    $table->string('kode_barang');
+    $table->integer('stok');
+    $table->integer('harga');
+    $table->timestamps();
+});
+```
+
+Isi model `app/Models/Barang.php` (daftar kolom yang boleh diisi mass-assignment):
+
+```php
+class Barang extends Model
+{
+    protected $fillable = ['nama_barang', 'kode_barang', 'stok', 'harga'];
+}
+```
+
+Jalankan migrasi untuk membuat tabel di database:
+
+```bash
+php artisan migrate
+```
+
+Cek status migrasi: `php artisan migrate:status`.
+
+---
+
+### 18.2 Soal 2 — Menambah Data dengan Eloquent (Tambah Satu Barang)
+
+Buat controller:
+
+```bash
+php artisan make:controller BarangController
+```
+
+Method `tambahBarang` menambahkan satu data menggunakan model `Barang`:
+
+```php
+use App\Models\Barang;
+
+public function tambahBarang()
+{
+    Barang::create([
+        'nama_barang' => 'Laptop',
+        'kode_barang' => 'BRG-001',
+        'stok'        => 10,
+        'harga'       => 7500000,
+    ]);
+
+    return 'Data barang berhasil ditambahkan';
+}
+```
+
+Route di `routes/web.php`:
+
+```php
+use App\Http\Controllers\BarangController;
+
+Route::get('/barang/tambah', [BarangController::class, 'tambahBarang']);
+```
+
+**Alur kerja Route → Controller → Model:**
+
+```
+URL /barang/tambah ──▶ Route ──▶ BarangController@tambahBarang
+                                          │
+                                          ▼
+                                   Model Barang (Eloquent)
+                                          │
+                                          ▼
+                                    Database barangs
+```
+
+1. Browser meminta `/barang/tambah` (method GET).
+2. Laravel mencocokkan URL dengan rute yang terdaftar di `routes/web.php`.
+3. Rute memanggil method `tambahBarang` pada `BarangController`.
+4. Controller memakai model `Barang` (Eloquent) untuk menulis data ke tabel `barangs` (SQL `INSERT` dihasilkan otomatis).
+5. Data tersimpan; controller mengembalikan respons ke browser.
+
+---
+
+### 18.3 Soal 3 — Menampilkan Semua Data Barang (Blade + `@foreach`)
+
+Method `index` mengambil semua data lalu mengirimnya ke view:
+
+```php
+public function index()
+{
+    $barang = Barang::all();
+
+    return view('barang.index', compact('barang'));
+}
+```
+
+View `resources/views/barang/index.blade.php` menampilkan tabel:
+
+```blade
+<table border="1" cellpadding="8" cellspacing="0">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Nama Barang</th>
+            <th>Kode Barang</th>
+            <th>Stok</th>
+            <th>Harga</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($barang as $item)
+            <tr>
+                <td>{{ $loop->iteration }}</td>
+                <td>{{ $item->nama_barang }}</td>
+                <td>{{ $item->kode_barang }}</td>
+                <td>{{ $item->stok }}</td>
+                <td>{{ $item->harga }}</td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+```
+
+**Penjelasan `@foreach` di Blade:**
+
+```blade
+@foreach ($barang as $item)
+    {{-- blok HTML yang diulang untuk setiap elemen --}}
+@endforeach
+```
+
+- `@foreach (...)` membuka perulangan; `@endforeach` menutupnya (sintaks Blade, dikompilasi menjadi `foreach` PHP biasa).
+- Variabel `$item` mewakili **satu baris data** pada setiap iterasi, jadi `{{ $item->nama_barang }}` mengakses kolomnya.
+- `$loop->iteration` adalah variabel bawaan Blade yang berisi nomor urut iterasi (1, 2, 3, …) — dipakai untuk kolom "No".
+
+---
+
+### 18.4 Soal 4 — Form Input Data Barang
+
+View `resources/views/barang/create.blade.php`:
+
+```blade
+<form method="POST" action="{{ route('barang.store') }}">
+    @csrf
+
+    <label>Nama Barang</label>
+    <input type="text" name="nama_barang" value="{{ old('nama_barang') }}">
+
+    <label>Kode Barang</label>
+    <input type="text" name="kode_barang" value="{{ old('kode_barang') }}">
+
+    <label>Stok</label>
+    <input type="number" name="stok" value="{{ old('stok') }}">
+
+    <label>Harga</label>
+    <input type="number" name="harga" value="{{ old('harga') }}">
+
+    <button type="submit">Simpan</button>
+</form>
+```
+
+Route untuk menampilkan form dan menyimpan data:
+
+```php
+Route::get('/barang/create', [BarangController::class, 'create'])->name('barang.create');
+Route::post('/barang', [BarangController::class, 'store'])->name('barang.store');
+```
+
+**Mengapa `@csrf` wajib pada form?**
+
+- Laravel melindungi semua rute POST/PUT/PATCH/DELETE dengan middleware `VerifyCsrfToken`.
+- Tanpa `@csrf`, Laravel mengembalikan error `419 Page Expired` (token tidak cocok).
+- `@csrf` menyisipkan input tersembunyi berisi token unik per session. Token ini membuktikan request benar-benar berasal dari form aplikasi kita, bukan dari situs lain — mencegah serangan **CSRF (Cross-Site Request Forgery)**.
+
+---
+
+### 18.5 Soal 5 — Menyimpan Data dari Form (Validasi)
+
+Method `store` dengan validasi sederhana:
+
+```php
+public function store(Request $request)
+{
+    $data = $request->validate([
+        'nama_barang' => 'required',
+        'kode_barang' => 'required',
+        'stok'        => 'required|numeric',
+        'harga'       => 'required|numeric',
+    ]);
+
+    Barang::create($data);
+
+    return redirect()->route('barang.index');
+}
+```
+
+**Penjelasan `$request->validate()`:**
+
+- Aturan ditulis sebagai array `'field' => 'aturan'`; aturan dipisah tanda `|` (atau boleh array, mis. `['required', 'numeric']`).
+- `required` → kolom wajib diisi.
+- `numeric` → isi harus berupa angka (integer/float), bukan teks bebas.
+- Jika validasi **gagal**, Laravel otomatis redirect kembali ke form dengan error di session (`$errors`) dan nilai lama (`old()`) — controller tidak dieksekusi lebih lanjut.
+
+---
+
+### 18.6 Soal 6 — Detail Data Barang
+
+Method `show` dengan parameter `id`:
+
+```php
+public function show($id)
+{
+    $barang = Barang::findOrFail($id);
+
+    return view('barang.show', compact('barang'));
+}
+```
+
+Route:
+
+```php
+Route::get('/barang/{id}', [BarangController::class, 'show'])->name('barang.show');
+```
+
+View `barang/show.blade.php` menampilkan detail, contoh:
+
+```blade
+<h1>{{ $barang->nama_barang }}</h1>
+<p>Kode : {{ $barang->kode_barang }}</p>
+<p>Stok : {{ $barang->stok }}</p>
+<p>Harga: {{ $barang->harga }}</p>
+```
+
+**Perbedaan `find()` vs `findOrFail()`:**
+
+| Method | Perilaku |
+|--------|----------|
+| `Barang::find($id)` | Mengembalikan objek model jika ditemukan, atau **`null`** jika tidak ada. Program berlanjut (harus dicek manual, mis. `if ($barang) { ... }`) |
+| `Barang::findOrFail($id)` | Mengembalikan objek model jika ditemukan, atau **melempar exception** `ModelNotFoundException` → Laravel otomatis menampilkan **404** jika tidak ada |
+
+`findOrFail()` lebih praktis untuk halaman publik/detail karena tidak perlu menulis pengecekan `null` manual.
+
+---
+
+### 18.7 Soal 7 — Form Edit Data Barang
+
+Method `edit` menampilkan form berisi data lama:
+
+```php
+public function edit($id)
+{
+    $barang = Barang::findOrFail($id);
+
+    return view('barang.edit', compact('barang'));
+}
+```
+
+Route:
+
+```php
+Route::get('/barang/{id}/edit', [BarangController::class, 'edit'])->name('barang.edit');
+Route::put('/barang/{id}', [BarangController::class, 'update'])->name('barang.update');
+```
+
+View `barang/edit.blade.php` (method PUT):
+
+```blade
+<form method="POST" action="{{ route('barang.update', $barang->id) }}">
+    @csrf
+    @method('PUT')
+
+    <label>Nama Barang</label>
+    <input type="text" name="nama_barang" value="{{ old('nama_barang', $barang->nama_barang) }}">
+    ...
+</form>
+```
+
+**Cara menampilkan nilai lama pada input:**
+
+```blade
+value="{{ old('nama_barang', $barang->nama_barang) }}"
+```
+
+- `old('nama_barang', ...)` → mengembalikan nilai yang dikirim sebelumnya (ketika validasi gagal), atau nilai **default** (argumen kedua) jika tidak ada.
+- Jadi urutannya: **jika ada error validasi → tampilkan input lama user**; **jika tidak → tampilkan data dari database** (`$barang->nama_barang`).
+- Tanpa `$barang->nama_barang` sebagai fallback, field edit akan kosong setiap halaman dimuat ulang.
+
+---
+
+### 18.8 Soal 8 — Update Data Barang (dengan Flash Message)
+
+Method `update`:
+
+```php
+public function update(Request $request, $id)
+{
+    $barang = Barang::findOrFail($id);
+
+    $data = $request->validate([
+        'nama_barang' => 'required',
+        'kode_barang' => 'required',
+        'stok'        => 'required|numeric',
+        'harga'       => 'required|numeric',
+    ]);
+
+    $barang->update($data);
+
+    return redirect()->route('barang.index')->with('success', 'Data barang berhasil diupdate.');
+}
+```
+
+**Contoh penggunaan session flash:**
+
+```php
+return redirect()->route('barang.index')->with('success', 'Data barang berhasil diupdate.');
+```
+
+- `->with('success', '...')` menyimpan pesan ke **session (flash data)** — hanya tersedia untuk satu request berikutnya, lalu otomatis terhapus.
+- Di view `index`, pesan ditampilkan dengan `session()`:
+
+```blade
+@if (session('success'))
+    <div style="color: green;">{{ session('success') }}</div>
+@endif
+```
+
+---
+
+### 18.9 Soal 9 — Hapus Data Barang
+
+Method `destroy`:
+
+```php
+public function destroy($id)
+{
+    $barang = Barang::findOrFail($id);
+    $barang->delete();
+
+    return redirect()->route('barang.index')->with('success', 'Data barang berhasil dihapus.');
+}
+```
+
+Route dengan method DELETE:
+
+```php
+Route::delete('/barang/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
+```
+
+Tombol hapus di halaman daftar (harus berupa form, bukan link GET biasa):
+
+```blade
+<form method="POST" action="{{ route('barang.destroy', $item->id) }}"
+      onsubmit="return confirm('Yakin ingin menghapus?')">
+    @csrf
+    @method('DELETE')
+    <button type="submit">Hapus</button>
+</form>
+```
+
+**Mengapa hapus memakai method DELETE, bukan link GET biasa?**
+
+1. **Semantik HTTP**: DELETE menandakan aksi yang mengubah/menghapus resource (bukan tindakan aman/seperti membaca). GET seharusnya tidak mengubah data.
+2. **Keamanan / tidak bisa di-prekondisi**: Link GET bisa ter-klik otomatis oleh crawler, pre-fetch browser, atau tautan yang di-share — data bisa terhapus tanpa disengaja.
+3. **CSRF protection**: Form POST/DELETE wajib menyertakan `@csrf`; Laravel memvalidasi token sehingga hapus tidak bisa dipicu dari situs luar. Link GET tidak punya perlindungan ini.
+4. **Konsisten dengan `Route::resource`**: Laravel secara default memetakan hapus ke method DELETE (`destroy`), jadi pola ini juga cocok untuk resource controller.
+
+---
+
+### 18.10 Soal 10 — Resource Controller & Route Resource
+
+Buat controller resource, model, dan migration:
+
+```bash
+php artisan make:controller ProdukController --resource
+php artisan make:model Produk -m
+```
+
+Migration tabel `produks`:
+
+```php
+Schema::create('produks', function (Blueprint $table) {
+    $table->id();
+    $table->string('nama_produk');
+    $table->string('kategori');
+    $table->integer('harga');
+    $table->integer('stok');
+    $table->timestamps();
+});
+```
+
+Daftarkan route resource:
+
+```php
+Route::resource('produk', ProdukController::class);
+```
+
+**Method-method resource controller dan fungsinya:**
+
+| Method | HTTP | URI | Fungsi |
+|--------|------|-----|--------|
+| `index` | GET | `/produk` | Menampilkan daftar semua produk |
+| `create` | GET | `/produk/create` | Menampilkan form tambah produk |
+| `store` | POST | `/produk` | Menyimpan produk baru dari form |
+| `show` | GET | `/produk/{produk}` | Menampilkan detail satu produk |
+| `edit` | GET | `/produk/{produk}/edit` | Menampilkan form edit produk |
+| `update` | PUT/PATCH | `/produk/{produk}` | Menyimpan perubahan produk |
+| `destroy` | DELETE | `/produk/{produk}` | Menghapus produk |
+
+**Keuntungan `Route::resource()` dibanding route satu per satu:**
+
+| Aspek | `Route::resource()` | Route manual |
+|-------|--------------------:|-------------|
+| Jumlah baris | 1 baris untuk 7 route | ±7 baris terpisah |
+| Nama route | Otomatis `produk.index`, `produk.store`, dst. | Harus didefinisikan manual |
+| Konsistensi | HTTP verb & URI sudah baku mengikuti konvensi RESTful | Mudah salah/inconsistent |
+| Perawatan | Tambah/ubah mudah, kode ringkas | Semakin banyak resource makin panjang |
+| Extra | Bisa dibatasi: `->only([...])` / `->except([...])`, atau `->apiResource()` | — |
+
+Dengan resource controller, seluruh CRUD cukup didefinisikan sekali dan langsung tersedia lengkap (index, create, store, show, edit, update, destroy).
 
 ---
 
