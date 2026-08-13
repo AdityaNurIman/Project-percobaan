@@ -591,31 +591,61 @@ Cek status migrasi: `php artisan migrate:status`.
 
 ### 18.2 Soal 2 — Menambah Data dengan Eloquent (Tambah Satu Barang)
 
-Buat controller:
+Tujuan: menulis **satu baris data** (Laptop) ke tabel `barangs` memakai model Eloquent, lalu memanggilnya lewat browser. Data ditulis **hardcoded di dalam method** (bukan dari form) agar memahami dasar cara kerja Eloquent sebelum masuk ke input form (Soal 4–5).
+
+#### 1. Membuat Controller
 
 ```bash
 php artisan make:controller BarangController
 ```
 
-Method `tambahBarang` menambahkan satu data menggunakan model `Barang`:
+Perintah ini membuat file kosong `app/Http/Controllers/BarangController.php`. Jika file sudah ada, perintah tetap berjalan dan menimpa isinya. Controller adalah kelas yang berisi method-method yang dipanggil oleh route untuk mengolah permintaan (request).
+
+#### 2. Menulis Method `tambahBarang`
+
+Isi seluruh file controller menjadi seperti ini:
 
 ```php
-use App\Models\Barang;
+<?php
 
-public function tambahBarang()
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Models\Barang;          // ← import model Barang agar bisa dipakai
+use Illuminate\Http\Request;
+
+class BarangController extends Controller
 {
-    Barang::create([
-        'nama_barang' => 'Laptop',
-        'kode_barang' => 'BRG-001',
-        'stok'        => 10,
-        'harga'       => 7500000,
-    ]);
+    public function tambahBarang()
+    {
+        Barang::create([
+            'nama_barang' => 'Laptop',
+            'kode_barang' => 'BRG-001',
+            'stok'        => 10,
+            'harga'       => 7500000,
+        ]);
 
-    return 'Data barang berhasil ditambahkan';
+        return 'Data barang berhasil ditambahkan';
+    }
 }
 ```
 
-Route di `routes/web.php`:
+**Penjelasan per baris:**
+
+- `use App\Models\Barang;` — **import model**. Memberi tahu PHP bahwa tulisan `Barang` di dalam file ini merujuk pada class `App\Models\Barang` (model yang dibuat di Soal 1). Tanpa baris ini, Laravel tidak akan menemukan class `Barang`.
+- `Barang::create([...])` — method **Eloquent** untuk membuat baris baru. `create()` menerima array `'nama_kolom' => 'nilai'` lalu menjalankan `INSERT INTO barangs (...) VALUES (...)` otomatis. Data yang ditulis:
+  - `nama_barang` → `Laptop`
+  - `kode_barang` → `BRG-001`
+  - `stok` → `10`
+  - `harga` → `7500000`
+- `return 'Data barang berhasil ditambahkan';` — karena method ini **langsung dipanggil route** (tanpa view), teks tersebut ditampilkan polos di browser sebagai bukti data sudah tersimpan.
+
+> **Kenapa `create()` butuh `$fillable`?**
+> `create()` memakai mekanisme *mass assignment* (mengisi banyak kolom sekaligus dari array). Demi keamanan, Laravel hanya mengizinkan kolom yang terdaftar di properti `$fillable` model (`['nama_barang', 'kode_barang', 'stok', 'harga']`). Kolom di luar daftar itu akan diabaikan. Inilah sebabnya properti `$fillable` di model Soal 1 wajib ada.
+
+#### 3. Mendaftarkan Route
+
+Tambahkan dua baris ini di `routes/web.php`:
 
 ```php
 use App\Http\Controllers\BarangController;
@@ -623,23 +653,46 @@ use App\Http\Controllers\BarangController;
 Route::get('/barang/tambah', [BarangController::class, 'tambahBarang']);
 ```
 
-**Alur kerja Route → Controller → Model:**
+- `Route::get('/barang/tambah', ...)` — route hanya direspon jika request memakai **method GET** ke URL `/barang/tambah`.
+- `[BarangController::class, 'tambahBarang']` — Laravel akan membuat instance `BarangController` lalu memanggil method `tambahBarang()`.
 
-```
-URL /barang/tambah ──▶ Route ──▶ BarangController@tambahBarang
-                                          │
-                                          ▼
-                                   Model Barang (Eloquent)
-                                          │
-                                          ▼
-                                    Database barangs
+#### 4. Menjalankan & Mengecek Hasil
+
+```bash
+php artisan serve
 ```
 
-1. Browser meminta `/barang/tambah` (method GET).
-2. Laravel mencocokkan URL dengan rute yang terdaftar di `routes/web.php`.
-3. Rute memanggil method `tambahBarang` pada `BarangController`.
-4. Controller memakai model `Barang` (Eloquent) untuk menulis data ke tabel `barangs` (SQL `INSERT` dihasilkan otomatis).
-5. Data tersimpan; controller mengembalikan respons ke browser.
+Buka `http://127.0.0.1:8000/barang/tambah` di browser → muncul teks `Data barang berhasil ditambahkan`. Untuk memastikan datanya benar-benar masuk ke database, cek lewat tinker:
+
+```bash
+php artisan tinker --execute="print_r(App\Models\Barang::all()->toArray());"
+```
+
+Output menampilkan satu record dengan `nama_barang = Laptop`.
+
+#### 5. Alur Kerja Route → Controller → Model
+
+```
+Browser ──GET /barang/tambah──▶ routes/web.php
+                                      │  (URL cocok dengan Route::get)
+                                      ▼
+                          BarangController@tambahBarang
+                                      │  (dipanggil route)
+                                      ▼
+                              Model Barang::create([...])
+                                      │  (Eloquent → SQL INSERT)
+                                      ▼
+                               Database tabel barangs
+                                      │
+                                      ▼
+                       Response teks "Data barang berhasil ditambahkan"
+```
+
+1. Browser meminta `/barang/tambah` dengan method GET.
+2. Laravel membaca `routes/web.php` dan mencocokkan URL serta method-nya; jika cocok, route tersebut aktif.
+3. Laravel membuat instance `BarangController` dan memanggil method `tambahBarang`.
+4. Di dalam method, `Barang::create([...])` — model `Barang` (yang terhubung ke tabel `barangs`) menyusun query `INSERT` dan mengeksekusinya ke database.
+5. Data tersimpan; method mengembalikan string, Laravel mengirimkannya ke browser sebagai respons.
 
 ---
 
