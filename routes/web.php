@@ -28,4 +28,9 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::resource('posts', AdminPostController::class);
 });
 
+
+// Route barang
+
+Route::get('/tambah/barang', [\App\Http\Controllers\BarangController::class, 'tambahBarang']);
+
 require __DIR__.'/auth.php';

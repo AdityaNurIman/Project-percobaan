@@ -698,7 +698,7 @@ Browser ──GET /barang/tambah──▶ routes/web.php
 
 ### 18.3 Soal 3 — Menampilkan Semua Data Barang (Blade + `@foreach`)
 
-Method `index` mengambil semua data lalu mengirimnya ke view:
+Tambahkan method `index` di dalam `app/Http/Controllers/BarangController.php`. Method ini mengambil semua data lalu mengirimnya ke view:
 
 ```php
 public function index()
@@ -709,7 +709,7 @@ public function index()
 }
 ```
 
-View `resources/views/barang/index.blade.php` menampilkan tabel:
+Buat file baru `resources/views/barang/index.blade.php` yang menampilkan tabel:
 
 ```blade
 <table border="1" cellpadding="8" cellspacing="0">
@@ -752,7 +752,7 @@ View `resources/views/barang/index.blade.php` menampilkan tabel:
 
 ### 18.4 Soal 4 — Form Input Data Barang
 
-View `resources/views/barang/create.blade.php`:
+Buat file baru `resources/views/barang/create.blade.php`:
 
 ```blade
 <form method="POST" action="{{ route('barang.store') }}">
@@ -774,7 +774,7 @@ View `resources/views/barang/create.blade.php`:
 </form>
 ```
 
-Route untuk menampilkan form dan menyimpan data:
+Route untuk menampilkan form dan menyimpan data (tambahkan di `routes/web.php`):
 
 ```php
 Route::get('/barang/create', [BarangController::class, 'create'])->name('barang.create');
@@ -791,7 +791,7 @@ Route::post('/barang', [BarangController::class, 'store'])->name('barang.store')
 
 ### 18.5 Soal 5 — Menyimpan Data dari Form (Validasi)
 
-Method `store` dengan validasi sederhana:
+Tambahkan method `store` di dalam `app/Http/Controllers/BarangController.php` dengan validasi sederhana:
 
 ```php
 public function store(Request $request)
@@ -820,7 +820,7 @@ public function store(Request $request)
 
 ### 18.6 Soal 6 — Detail Data Barang
 
-Method `show` dengan parameter `id`:
+Tambahkan method `show` dengan parameter `id` di dalam `app/Http/Controllers/BarangController.php`:
 
 ```php
 public function show($id)
@@ -831,13 +831,13 @@ public function show($id)
 }
 ```
 
-Route:
+Route (tambahkan di `routes/web.php`):
 
 ```php
 Route::get('/barang/{id}', [BarangController::class, 'show'])->name('barang.show');
 ```
 
-View `barang/show.blade.php` menampilkan detail, contoh:
+Buat file baru `resources/views/barang/show.blade.php` untuk menampilkan detail, contoh:
 
 ```blade
 <h1>{{ $barang->nama_barang }}</h1>
@@ -859,7 +859,7 @@ View `barang/show.blade.php` menampilkan detail, contoh:
 
 ### 18.7 Soal 7 — Form Edit Data Barang
 
-Method `edit` menampilkan form berisi data lama:
+Tambahkan method `edit` di dalam `app/Http/Controllers/BarangController.php` untuk menampilkan form berisi data lama:
 
 ```php
 public function edit($id)
@@ -870,14 +870,14 @@ public function edit($id)
 }
 ```
 
-Route:
+Route (tambahkan di `routes/web.php`):
 
 ```php
 Route::get('/barang/{id}/edit', [BarangController::class, 'edit'])->name('barang.edit');
 Route::put('/barang/{id}', [BarangController::class, 'update'])->name('barang.update');
 ```
 
-View `barang/edit.blade.php` (method PUT):
+Buat file baru `resources/views/barang/edit.blade.php` (method PUT):
 
 ```blade
 <form method="POST" action="{{ route('barang.update', $barang->id) }}">
@@ -904,7 +904,7 @@ value="{{ old('nama_barang', $barang->nama_barang) }}"
 
 ### 18.8 Soal 8 — Update Data Barang (dengan Flash Message)
 
-Method `update`:
+Tambahkan method `update` di dalam `app/Http/Controllers/BarangController.php`:
 
 ```php
 public function update(Request $request, $id)
@@ -943,7 +943,7 @@ return redirect()->route('barang.index')->with('success', 'Data barang berhasil 
 
 ### 18.9 Soal 9 — Hapus Data Barang
 
-Method `destroy`:
+Tambahkan method `destroy` di dalam `app/Http/Controllers/BarangController.php`:
 
 ```php
 public function destroy($id)
@@ -955,7 +955,7 @@ public function destroy($id)
 }
 ```
 
-Route dengan method DELETE:
+Route dengan method DELETE (tambahkan di `routes/web.php`):
 
 ```php
 Route::delete('/barang/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
@@ -990,7 +990,7 @@ php artisan make:controller ProdukController --resource
 php artisan make:model Produk -m
 ```
 
-Migration tabel `produks`:
+Isi file migration `database/migrations/..._create_produks_table.php` untuk tabel `produks`:
 
 ```php
 Schema::create('produks', function (Blueprint $table) {
@@ -1003,7 +1003,7 @@ Schema::create('produks', function (Blueprint $table) {
 });
 ```
 
-Daftarkan route resource:
+Daftarkan route resource di `routes/web.php`:
 
 ```php
 Route::resource('produk', ProdukController::class);
